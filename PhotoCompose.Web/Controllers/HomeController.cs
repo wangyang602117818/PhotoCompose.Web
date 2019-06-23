@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MongoDB.Bson;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
@@ -37,18 +38,24 @@ namespace PhotoCompose.Web.Controllers
             imageBkStream.Write(imageBytes, 0, imageBytes.Length);
             //缩放2/3
             int width = 0, height = 0;
-            Stream newImageBkStream = ImageExtention.GenerateFilePreview(Hw  / 2, imageBkStream, ImageModelEnum.scale, ref width, ref height);
+            Stream newImageBkStream = ImageExtention.GenerateFilePreview(Hw / 2, imageBkStream, ImageModelEnum.scale, ref width, ref height);
             newImageBkStream.Position = 0;
             //新人物图
             Bitmap img = new Bitmap(newImageBkStream);
-
+            //组合图
             var newImage = CombinImage(imageBack, img);
-
-            MemoryStream memoryStream = new MemoryStream();
-            newImage.Save(memoryStream, System.Drawing.Imaging.ImageFormat.Png);
-            memoryStream.Position = 0;
-
-            return File(memoryStream, "image/png");
+            //保存磁盘
+            string newpath = AppDomain.CurrentDomain.BaseDirectory + "images\\result\\" + DateTime.Now.ToString("yyyyMMdd") + "\\";
+            string fileName = ObjectId.GenerateNewId().ToString() + ".png";
+            if (!Directory.Exists(newpath)) Directory.CreateDirectory(newpath);
+            newImage.Save(newpath + fileName);
+            return Content(DateTime.Now.ToString("yyyyMMdd") + "-" + fileName);
+        }
+        public ActionResult Get(string path)
+        {
+            string folder = path.Split('-')[0];
+            string name = path.Split('-')[1];
+            return File(AppDomain.CurrentDomain.BaseDirectory + "images\\result\\" + folder + "\\" + name, "image/png");
         }
         /// <summary>
         /// 合并图片
@@ -96,14 +103,9 @@ namespace PhotoCompose.Web.Controllers
             int realWidth = maxX - minX;
             int realHeight = maxY - minY;
 
-            g.DrawImage(img, (imageBack.Width-realWidth)/2, imageBack.Height- realHeight-10, img.Width, img.Height);
+            g.DrawImage(img, (imageBack.Width - realWidth) / 2, imageBack.Height - realHeight - 10, img.Width, img.Height);
             GC.Collect();
             return bmp;
-        }
-        public ActionResult Get()
-        {
-            FileStream fileStream = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "images\\background\\classical\\01.jpg", FileMode.Open, FileAccess.Read);
-            return File(fileStream, "image/png");
         }
 
 

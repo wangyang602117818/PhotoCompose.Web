@@ -112,15 +112,13 @@
         formData.append("file", file);
         formData.append("template", template);
         var xhr = new XMLHttpRequest();
-        xhr.responseType = 'blob';
         xhr.upload.onprogress = function (event) {
             //if (progress) progress(event.loaded, event.total);
         }
         xhr.onload = function (event) {
             var target = event.srcElement || event.target;
-            var blob = target.response;
             var img = document.createElement("img");
-            img.src = window.URL.createObjectURL(blob);
+            img.src = 'home/get?path=' + target.response;
             //$(".result").css("background-image", "url(" + img.src + ")");
             $('.result').html(img);
         }
