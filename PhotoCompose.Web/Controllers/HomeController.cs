@@ -28,15 +28,26 @@ namespace PhotoCompose.Web.Controllers
             var result = client.BodySeg(file.InputStream.ToBytes(), options);
             var imageBase64 = result["foreground"].ToString();
             byte[] imageBytes = imageBase64.Base64StrToBuffer();
-            MemoryStream imageBkStream = new MemoryStream();
-            imageBkStream.Write(imageBytes, 0, imageBytes.Length);
-            Bitmap img = new Bitmap(imageBkStream);
             //背景图
             Image imageBack = Image.FromFile(AppDomain.CurrentDomain.BaseDirectory + template);
+            int Hw = Math.Max(imageBack.Width, imageBack.Height);
+
+            //人物图
+            MemoryStream imageBkStream = new MemoryStream();
+            imageBkStream.Write(imageBytes, 0, imageBytes.Length);
+            //缩放2/3
+            int width = 0, height = 0;
+            Stream newImageBkStream = ImageExtention.GenerateFilePreview(Hw  / 2, imageBkStream, ImageModelEnum.scale, ref width, ref height);
+            newImageBkStream.Position = 0;
+            //新人物图
+            Bitmap img = new Bitmap(newImageBkStream);
+
             var newImage = CombinImage(imageBack, img);
+
             MemoryStream memoryStream = new MemoryStream();
             newImage.Save(memoryStream, System.Drawing.Imaging.ImageFormat.Png);
             memoryStream.Position = 0;
+
             return File(memoryStream, "image/png");
         }
         /// <summary>
@@ -62,7 +73,8 @@ namespace PhotoCompose.Web.Controllers
                     var p = img.GetPixel(x, y);
                     if (p.A > 0)
                     {
-                        if (imgs.ContainsKey(x)) {
+                        if (imgs.ContainsKey(x))
+                        {
                             imgs[x].Add(y);
                         }
                         else
@@ -74,17 +86,17 @@ namespace PhotoCompose.Web.Controllers
             }
             int minX = img.Width, minY = img.Height;
             int maxX = 0, maxY = 0;
-            int realWidth = maxX - minX;
-            int realHeight = maxY - minY;
-            foreach(var kv in imgs)
+            foreach (var kv in imgs)
             {
                 if (kv.Key < minX) minX = kv.Key;
                 if (kv.Key > maxX) maxX = kv.Key;
                 if (kv.Value.Min() < minY) minY = kv.Value.Min();
                 if (kv.Value.Max() > maxY) maxY = kv.Value.Max();
             }
-            int x = imageBack.Width< realWidth?0:
-            g.DrawImage(img, 0, 0, img.Width / 2, img.Height / 2);
+            int realWidth = maxX - minX;
+            int realHeight = maxY - minY;
+
+            g.DrawImage(img, (imageBack.Width-realWidth)/2, imageBack.Height- realHeight-10, img.Width, img.Height);
             GC.Collect();
             return bmp;
         }
