@@ -56,8 +56,8 @@
         }
 
         .result {
-            width: 500px;
-            height: 400px;
+            width: 504px;
+            height: 324px;
             text-align: center;
             background-size: 100% 100%;
             background-repeat: no-repeat;
@@ -121,8 +121,8 @@
             var blob = target.response;
             var img = document.createElement("img");
             img.src = window.URL.createObjectURL(blob);
-            $(".result").css("background-image", "url(" + img.src + ")");
-            //$('.result').css("");
+            //$(".result").css("background-image", "url(" + img.src + ")");
+            $('.result').html(img);
         }
         xhr.onerror = function (event) {
             //if (error) error(event);
