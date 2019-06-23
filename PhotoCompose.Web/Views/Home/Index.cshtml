@@ -1,0 +1,133 @@
+﻿
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+    <script src="~/Scripts/jquery-3.4.1.min.js"></script>
+    <style>
+        .background-template {
+            position: absolute;
+            width: 550px;
+            height: 500px;
+            display: inline-block;
+            overflow: auto;
+            box-shadow: 0 4px 20px 1px rgba(0,0,0,0.2);
+            border: 1px #dfe6f6 solid;
+            padding: 10px;
+        }
+
+            .background-template .background_item {
+                display: inline-block;
+                cursor: pointer;
+            }
+
+                .background-template .background_item:hover {
+                    border: 1px solid #ccc;
+                }
+
+        .background {
+            cursor: pointer;
+            display: inline-block;
+            width: 250px;
+            height: 200px;
+            line-height: 200px;
+            text-align: center;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            border: 1px dashed #ccc;
+        }
+
+        .photo {
+            cursor: pointer;
+            display: inline-block;
+            width: 250px;
+            height: 200px;
+            line-height: 200px;
+            text-align: center;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            border: 1px dashed #ccc;
+        }
+
+        .result {
+            width: 500px;
+            height: 400px;
+            text-align: center;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            border: 1px dashed #ccc;
+        }
+
+    </style>
+</head>
+<body>
+    <input type="file" name="selectPhoto" id="selectPhotoInput" accept="image/*" style="width:0;height:0" />
+    <div class="photo">
+        select a photo
+    </div>
+    <div class="background">
+        select a background
+    </div>
+    <div class="background-template" style="display:none">
+        <div class="background_item" id="images/background/classical/01.jpg">
+            <img src="~/Images/background/classical/01.jpg" />
+        </div>
+        <div class="background_item" id="images/background/classical/02.jpg">
+            <img src="~/Images/background/classical/02.jpg" />
+        </div>
+    </div>
+    <br />
+    <input type="button" value="merge" id="merge" />
+    <div class="result"></div>
+</body>
+</html>
+<script>
+    var file = null;
+    var template = "";
+    $(".photo").click(function () { $("#selectPhotoInput").click() })
+    $("#selectPhotoInput").change(function () {
+        file = this.files[0];
+        var reader = new FileReader();
+        // it's onload event and you forgot (parameters)
+        reader.onload = function (e) {
+            $('.photo').css('background-image', 'url(' + e.target.result + ')');
+        }
+        reader.readAsDataURL(file);
+    });
+    $(".background").click(function () {
+        $(".background-template").toggle();
+    });
+    $(".background_item").click(function () {
+        template = $(this).attr("id");
+        $(".background").css("background-image", "url(" + template + ")");
+    });
+    $("#merge").click(function () {
+        var formData = new FormData();
+        formData.append("file", file);
+        formData.append("template", template);
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = 'blob';
+        xhr.upload.onprogress = function (event) {
+            //if (progress) progress(event.loaded, event.total);
+        }
+        xhr.onload = function (event) {
+            var target = event.srcElement || event.target;
+            var blob = target.response;
+            var img = document.createElement("img");
+            img.src = window.URL.createObjectURL(blob);
+            $(".result").css("background-image", "url(" + img.src + ")");
+            //$('.result').css("");
+        }
+        xhr.onerror = function (event) {
+            //if (error) error(event);
+        }
+        xhr.open('post', 'home/ComposeImage');
+        xhr.send(formData);
+    });
+</script>
