@@ -19,7 +19,7 @@ namespace PhotoCompose.Web.Controllers
         {
             return View();
         }
-        public ActionResult ComposeImage(HttpPostedFileBase file, string template)
+        public ActionResult RemoveBackground(HttpPostedFileBase file)
         {
             var client = new Baidu.Aip.BodyAnalysis.Body(apiKey, secretKey);
             var options = new Dictionary<string, object>
@@ -29,49 +29,11 @@ namespace PhotoCompose.Web.Controllers
             var result = client.BodySeg(file.InputStream.ToBytes(), options);
             var imageBase64 = result["foreground"].ToString();
             byte[] imageBytes = imageBase64.Base64StrToBuffer();
-            //背景图
-            Image imageBack = Image.FromFile(AppDomain.CurrentDomain.BaseDirectory + template);
-            int Hw = Math.Max(imageBack.Width, imageBack.Height);
-
-            //人物图
+            //剪切背景图
             MemoryStream imageBkStream = new MemoryStream();
             imageBkStream.Write(imageBytes, 0, imageBytes.Length);
-            //缩放2/3
-            int width = 0, height = 0;
-            Stream newImageBkStream = ImageExtention.GenerateFilePreview(Hw / 2, imageBkStream, ImageModelEnum.scale, ref width, ref height);
-            newImageBkStream.Position = 0;
-            //新人物图
-            Bitmap img = new Bitmap(newImageBkStream);
-            //组合图
-            var newImage = CombinImage(imageBack, img);
-            //保存磁盘
-            string newpath = AppDomain.CurrentDomain.BaseDirectory + "images\\result\\" + DateTime.Now.ToString("yyyyMMdd") + "\\";
-            string fileName = ObjectId.GenerateNewId().ToString() + ".png";
-            if (!Directory.Exists(newpath)) Directory.CreateDirectory(newpath);
-            newImage.Save(newpath + fileName);
-            return Content(DateTime.Now.ToString("yyyyMMdd") + "-" + fileName);
-        }
-        public ActionResult Get(string path)
-        {
-            string folder = path.Split('-')[0];
-            string name = path.Split('-')[1];
-            return File(AppDomain.CurrentDomain.BaseDirectory + "images\\result\\" + folder + "\\" + name, "image/png");
-        }
-        /// <summary>
-        /// 合并图片
-        /// </summary>
-        /// <param name="imgBack"></param>
-        /// <param name="img"></param>
-        /// <param name="xDeviation"></param>
-        /// <param name="yDeviation"></param>
-        /// <returns></returns>
-        public static Bitmap CombinImage(Image imageBack, Bitmap img, int xDeviation = 0, int yDeviation = 0)
-        {
-            Bitmap bmp = new Bitmap(imageBack.Width, imageBack.Height);
+            Bitmap img = new Bitmap(imageBkStream);
 
-            Graphics g = Graphics.FromImage(bmp);
-            g.Clear(Color.White);
-            g.DrawImage(imageBack, 0, 0, imageBack.Width, imageBack.Height);
             Dictionary<int, List<int>> imgs = new Dictionary<int, List<int>>();
             for (var x = 0; x < img.Width; x++)
             {
@@ -102,8 +64,57 @@ namespace PhotoCompose.Web.Controllers
             }
             int realWidth = maxX - minX;
             int realHeight = maxY - minY;
+            Stream newImageBkStream = ImageExtention.GenerateThumbnail(imageBkStream, ImageModelEnum.cut, minX, minY, ref realWidth, ref realHeight);
+            //保存磁盘
+            string newpath = AppDomain.CurrentDomain.BaseDirectory + "images\\process_photo\\" + DateTime.Now.ToString("yyyyMMdd") + "\\";
+            string fileName = ObjectId.GenerateNewId().ToString() + ".png";
+            if (!Directory.Exists(newpath)) Directory.CreateDirectory(newpath);
+            using (FileStream fileStream = new FileStream(newpath + fileName, FileMode.Create, FileAccess.Write))
+            {
+                newImageBkStream.CopyTo(fileStream);
+            }
+            return Json(new { path = "process_photo-" + DateTime.Now.ToString("yyyyMMdd") + "-" + fileName, width = realWidth, height = realHeight });
+        }
 
-            g.DrawImage(img, (imageBack.Width - realWidth) / 2, imageBack.Height - realHeight - 10, img.Width, img.Height);
+        public ActionResult ComposeImage(string photopath, string template, int photo_x = 0, int photo_y = 0, int photo_width = 0, int photo_height = 0)
+        {
+            //背景图
+            Image imageBack = Image.FromFile(AppDomain.CurrentDomain.BaseDirectory + template);
+            int Hw = Math.Max(imageBack.Width, imageBack.Height);
+            //人物图
+            string[] patharray = photopath.Split('-');
+            string path = AppDomain.CurrentDomain.BaseDirectory + "images\\" + patharray[0] + "\\" + patharray[1] + "\\" + patharray[2];
+            Bitmap img = new Bitmap(path);
+            //组合图
+            var newImage = CombinImage(imageBack, img, photo_x, photo_y, photo_width, photo_height);
+            //保存磁盘
+            string newpath = AppDomain.CurrentDomain.BaseDirectory + "images\\result\\" + DateTime.Now.ToString("yyyyMMdd") + "\\";
+            string fileName = ObjectId.GenerateNewId().ToString() + ".png";
+            if (!Directory.Exists(newpath)) Directory.CreateDirectory(newpath);
+            newImage.Save(newpath + fileName);
+            return Content("result-" + DateTime.Now.ToString("yyyyMMdd") + "-" + fileName);
+        }
+        public ActionResult Get(string path)
+        {
+            string[] array = path.Split('-');
+            return File(AppDomain.CurrentDomain.BaseDirectory + "images\\" + array[0] + "\\" + array[1] + "\\" + array[2], "image/png");
+        }
+        /// <summary>
+        /// 合并图片
+        /// </summary>
+        /// <param name="imgBack"></param>
+        /// <param name="img"></param>
+        /// <param name="xDeviation"></param>
+        /// <param name="yDeviation"></param>
+        /// <returns></returns>
+        public static Bitmap CombinImage(Image imageBack, Bitmap img, int x, int y, int width, int height)
+        {
+            Bitmap bmp = new Bitmap(imageBack.Width, imageBack.Height);
+
+            Graphics g = Graphics.FromImage(bmp);
+            g.Clear(Color.White);
+            g.DrawImage(imageBack, 0, 0, imageBack.Width, imageBack.Height);
+            g.DrawImage(img, x, y, width, height);
             GC.Collect();
             return bmp;
         }

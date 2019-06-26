@@ -35,7 +35,7 @@ namespace PhotoCompose.Web
             }
             return ImageFormat.Jpeg;
         }
-        public static Stream GenerateThumbnail(Stream stream, ImageModelEnum model, ImageFormat outputFormat, int x, int y, ref int width, ref int height)
+        public static Stream GenerateThumbnail(Stream stream, ImageModelEnum model, int x, int y, ref int width, ref int height)
         {
             string type = GetImageType2(stream);
             bool cut = false;
@@ -76,7 +76,7 @@ namespace PhotoCompose.Web
                     }
                     if (width > image.Width) width = image.Width;
                     if (height > image.Height) height = image.Height;
-                    return ConvertImage(image, outputFormat, x, y, width, height, cut);
+                    return ConvertImage(image, image.RawFormat, x, y, width, height, cut);
                 }
             }
         }

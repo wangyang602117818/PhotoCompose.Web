@@ -9,7 +9,10 @@
 <head>
     <meta name="viewport" content="width=device-width" />
     <title>Index</title>
-    <script src="~/Scripts/jquery-3.4.1.min.js"></script>
+    <script src="Scripts/jquery.js"></script>
+    <script src="Scripts/jquery-ui.js"></script>
+    <link href="Content/jquery-ui.css" rel="stylesheet" />
+
     <style>
         .background-template {
             position: absolute;
@@ -55,7 +58,7 @@
             border: 1px dashed #ccc;
         }
 
-        .result {
+        .preview, .result {
             width: 504px;
             height: 324px;
             text-align: center;
@@ -64,6 +67,14 @@
             border: 1px dashed #ccc;
         }
 
+        .pre_photo {
+            width: 250px;
+            height: 150px;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            border: 1px dashed #ccc;
+            background-color: rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
@@ -83,22 +94,27 @@
         </div>
     </div>
     <br />
+    <input type="button" value="ok" id="ok" />
+    <div class="preview">
+        <div class="pre_photo"></div>
+    </div>
     <input type="button" value="merge" id="merge" />
     <div class="result"></div>
 </body>
 </html>
 <script>
-    var file = null;
+    var photo = null;
+    var photopath = "", photo_width = 250, photo_height = 150, photo_x = 0, photo_y = 0;
     var template = "";
     $(".photo").click(function () { $("#selectPhotoInput").click() })
     $("#selectPhotoInput").change(function () {
-        file = this.files[0];
+        photo = this.files[0];
         var reader = new FileReader();
         // it's onload event and you forgot (parameters)
         reader.onload = function (e) {
             $('.photo').css('background-image', 'url(' + e.target.result + ')');
         }
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(photo);
     });
     $(".background").click(function () {
         $(".background-template").toggle();
@@ -107,9 +123,9 @@
         template = $(this).attr("id");
         $(".background").css("background-image", "url(" + template + ")");
     });
-    $("#merge").click(function () {
+    $("#ok").click(function () {
         var formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", photo);
         formData.append("template", template);
         var xhr = new XMLHttpRequest();
         xhr.upload.onprogress = function (event) {
@@ -117,15 +133,37 @@
         }
         xhr.onload = function (event) {
             var target = event.srcElement || event.target;
-            var img = document.createElement("img");
-            img.src = 'home/get?path=' + target.response;
-            //$(".result").css("background-image", "url(" + img.src + ")");
-            $('.result').html(img);
+            photopath = JSON.parse(target.response).path;
+            var url = 'home/get?path=' + photopath;
+            //var img = document.createElement("img");
+            //img.src = 'home/get?path=' + target.response;
+            $(".preview").css("background-image", "url(" + template + ")");
+            $(".pre_photo").css("background-image", "url(" + url + ")");
+
         }
         xhr.onerror = function (event) {
             //if (error) error(event);
         }
-        xhr.open('post', 'home/ComposeImage');
+        xhr.open('post', 'home/removebackground');
         xhr.send(formData);
+    });
+    $("#merge").click(function () {
+        $.get('home/composeimage?photopath=' + photopath + "&template=" + template + "&photo_x=" + photo_x + "&photo_y=" + photo_y + "&photo_width=" + photo_width + "&photo_height=" + photo_height, function (data) {
+            var img = document.createElement("img");
+            img.src = 'home/get?path=' + data;
+            $(".result").html(img);
+        });
+    });
+    $(".pre_photo").draggable({
+        containment: ".preview",
+        stop: function (e, ui) {
+            photo_x = ui.position.left;
+            photo_y = ui.position.top;
+        }
+    }).resizable({
+        stop: function (e, ui) {
+            photo_width = ui.size.width;
+            photo_height = ui.size.height;
+        }
     });
 </script>
